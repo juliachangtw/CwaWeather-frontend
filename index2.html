@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>森森天氣 | 氣象便條牆</title>
+    <link rel="icon" type="image/png" href="./icon-v2.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Mali:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* === 文具店粉彩配色 (Pastel Palette) === */
+        --paper-yellow: #fff9c4;
+        --paper-pink: #ffcdd2;
+        --paper-blue: #b3e5fc;
+        --paper-green: #c8e6c9;
+        --paper-purple: #e1bee7;
+        --paper-white: #fafafa;
+
+        /* 筆跡顏色 */
+        --ink-primary: #37474f; /* 鉛筆深灰 */
+        --ink-secondary: #78909c;
+        --ink-accent: #ff7043; /* 重點筆橘色 */
+
+        /* 背景牆面色 */
+        --wall-bg: #f0f4f8;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: "Mali", cursive, sans-serif;
+        background-color: var(--wall-bg);
+        color: var(--ink-primary);
+        min-height: 100vh;
+        overflow-x: hidden;
+        /* 點狀網格背景 (Dot Grid) 模擬手帳本或牆面 */
+        background-image: radial-gradient(#cfd8dc 1px, transparent 1px);
+        background-size: 20px 20px;
+        padding-bottom: 40px;
+      }
+
+      /* === 頂部工具列 (像貼在牆上的標籤) === */
+      .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        pointer-events: none; /* 讓點擊穿透 */
+      }
+
+      .location-tag {
+        pointer-events: auto;
+        background: var(--ink-primary);
+        color: white;
+        padding: 8px 15px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        /* 鋸齒狀邊緣 (CSS Mask) 模擬撕下的膠帶 */
+        clip-path: polygon(0% 0%, 100% 0%, 95% 50%, 100% 100%, 0% 100%, 5% 50%);
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        transform: rotate(-2deg);
+      }
+
+      .date-stamp {
+        font-family: "Caveat", cursive;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--ink-secondary);
+        transform: rotate(2deg);
+        text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.8);
+      }
+
+      .container {
+        padding: 10px 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* === 通用：便條紙效果 (The Note) === */
+      .paper-note {
+        position: relative;
+        padding: 25px;
+        color: var(--ink-primary);
+        /* 關鍵：利用 border-radius 創造不規則的有機形狀，不像電腦畫的 */
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+        /* 紙張浮起來的陰影 */
+        box-shadow: 2px 5px 15px rgba(0, 0, 0, 0.1),
+          0 1px 2px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+
+      /* 紙膠帶裝飾 (Tape) */
+      .tape {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        width: 100px;
+        height: 30px;
+        transform: translateX(-50%) rotate(-1deg);
+        background-color: rgba(255, 235, 59, 0.6); /* 半透明黃色膠帶 */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        opacity: 0.8;
+        z-index: 10;
+        /* 膠帶兩邊的撕裂感 */
+        mask-image: url("data:image/svg+xml;utf8,<svg width='100' height='30' xmlns='http://www.w3.org/2000/svg'><path d='M0,0 L100,0 L95,15 L100,30 L0,30 L5,15 Z' fill='black'/></svg>");
+        -webkit-mask-image: url("data:image/svg+xml;utf8,<svg width='100' height='30' xmlns='http://www.w3.org/2000/svg'><path d='M0,0 L100,0 L95,15 L100,30 L0,30 L5,15 Z' fill='black'/></svg>");
+        mask-size: 100% 100%;
+      }
+
+      /* === 主畫面：今日大便條 === */
+      .hero-note {
+        background-color: var(--paper-yellow);
+        margin-top: 20px;
+        margin-bottom: 40px;
+        text-align: center;
+        transform: rotate(1deg); /* 微微歪斜 */
+        min-height: 280px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* 特殊的膠帶樣式 */
+      .hero-note .tape {
+        background-color: rgba(255, 112, 67, 0.5); /* 橘色膠帶 */
+        width: 120px;
+        top: -12px;
+        transform: translateX(-50%) rotate(2deg);
+      }
+
+      .note-title {
+        font-family: "Caveat", cursive;
+        font-size: 1.8rem;
+        color: var(--ink-secondary);
+        margin-bottom: 10px;
+      }
+
+      .main-weather-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        margin: 10px 0;
+      }
+
+      .main-icon {
+        font-size: 6rem;
+        /* 像貼紙一樣的白邊效果 */
+        filter: drop-shadow(0 4px 2px rgba(0, 0, 0, 0.1)) contrast(1.1);
+        animation: swing 3s ease-in-out infinite;
+      }
+
+      @keyframes swing {
+        0%,
+        100% {
+          transform: rotate(-5deg);
+        }
+        50% {
+          transform: rotate(5deg);
+        }
+      }
+
+      .main-temp {
+        font-size: 4.5rem;
+        font-weight: 700;
+        font-family: "Caveat", cursive;
+        line-height: 1;
+      }
+
+      .note-insight {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-top: 15px;
+        padding: 10px;
+        border-top: 2px dashed rgba(0, 0, 0, 0.1); /* 虛線分隔 */
+        width: 100%;
+      }
+
+      /* === 下方預報：拍立得/小便條牆 === */
+      .board-title {
+        font-size: 1.4rem;
+        margin-left: 10px;
+        margin-bottom: 20px;
+        transform: rotate(-1deg);
+        display: inline-block;
+        background: white;
+        padding: 2px 10px;
+        box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+      }
+
+      .scroll-deck {
+        display: flex;
+        overflow-x: auto;
+        gap: 20px;
+        padding: 10px 10px 30px 10px;
+        scrollbar-width: none;
+      }
+      .scroll-deck::-webkit-scrollbar {
+        display: none;
+      }
+
+      .mini-note {
+        min-width: 140px;
+        background-color: var(--paper-white); /* 預設白紙 */
+        padding: 15px;
+        text-align: center;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        /* 不同的不規則形狀 */
+        border-radius: 2px 255px 3px 25px / 255px 5px 225px 5px;
+        box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* 讓偶數的卡片往反方向歪一點，製造凌亂感 */
+      .mini-note:nth-child(odd) {
+        transform: rotate(-2deg);
+      }
+      .mini-note:nth-child(even) {
+        transform: rotate(1.5deg);
+        margin-top: 10px;
+      }
+
+      /* 不同顏色的膠帶 */
+      .mini-note .tape {
+        width: 50px;
+        height: 20px;
+        top: -8px;
+        background: rgba(100, 221, 23, 0.4); /* 綠色 */
+      }
+      .mini-note:nth-child(even) .tape {
+        background: rgba(41, 182, 246, 0.4); /* 藍色 */
+      }
+
+      .mini-time {
+        font-family: "Caveat", cursive;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--ink-secondary);
+      }
+
+      .mini-icon {
+        font-size: 3rem;
+        margin: 10px 0;
+      }
+      .mini-temp {
+        font-size: 1.3rem;
+        font-weight: 700;
+      }
+
+      /* 手繪風格進度條 */
+      .sketch-bar-box {
+        margin-top: 10px;
+        width: 100%;
+        height: 8px;
+        border: 2px solid var(--ink-primary); /* 黑框 */
+        border-radius: 10px;
+        padding: 1px;
+        background: white;
+      }
+      .sketch-bar-fill {
+        height: 100%;
+        background: var(--ink-accent);
+        border-radius: 5px;
+        /* 像是用彩色筆塗滿的紋理 */
+        background-image: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 2px,
+          rgba(255, 255, 255, 0.5) 2px,
+          rgba(255, 255, 255, 0.5) 4px
+        );
+      }
+
+      /* Loading Animation */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--wall-bg);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        transition: opacity 0.5s;
+      }
+      .loading-note {
+        background: var(--paper-white);
+        padding: 40px;
+        transform: rotate(-3deg);
+        box-shadow: 5px 10px 20px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="loading" class="loading-overlay">
+      <div class="loading-note paper-note">
+        <div class="tape"></div>
+        <div style="font-size: 4rem">✏️</div>
+        <p style="font-family: 'Caveat'; font-size: 1.5rem; margin-top: 10px">
+          正在寫下今天的天氣...
+        </p>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="location-tag" id="locationTag">📍 TW</div>
+      <div class="date-stamp" id="dateStamp">Dec 01</div>
+    </div>
+
+    <div class="container" id="mainContent" style="display: none">
+      <div id="heroContainer"></div>
+
+      <h3 class="board-title">Future Notes</h3>
+      <div class="scroll-deck" id="forecastDeck"></div>
+    </div>
+
+    <script>
+      const API_URL = "https://tyweather.zeabur.app/api/weather/kaohsiung";
+
+      // 隨機分配便條紙顏色
+      const PAPER_COLORS = [
+        "var(--paper-white)",
+        "var(--paper-blue)",
+        "var(--paper-green)",
+        "var(--paper-pink)",
+        "var(--paper-purple)",
+      ];
+
+      function getRandomColor(index) {
+        return PAPER_COLORS[index % PAPER_COLORS.length];
+      }
+
+      function getWeatherIcon(weather) {
+        if (!weather) return "🌤️";
+        if (weather.includes("雷")) return "⛈️";
+        if (weather.includes("雨")) return "🌧️";
+        if (weather.includes("多雲") && weather.includes("晴")) return "⛅";
+        if (weather.includes("多雲")) return "☁️";
+        if (weather.includes("陰")) return "☁️";
+        if (weather.includes("晴")) return "☀️";
+        return "🌤️";
+      }
+
+      function generateInsight(weather, rainProb, maxTemp) {
+        let text = "";
+        const rain = parseInt(rainProb);
+        const temp = parseInt(maxTemp);
+
+        if (rain > 60) text = "外面濕答答，記得帶傘喔！☔";
+        else if (temp >= 30) text = "超級熱！去喝杯涼的吧 🍹";
+        else if (temp <= 18) text = "有點冷，圍巾是好夥伴 🧣";
+        else if (rain > 30) text = "帶把傘比較安心 🌂";
+        else if (weather.includes("晴")) text = "陽光真好，去散散步吧！✨";
+        else text = "舒舒服服的日子 ☁️";
+        return text;
+      }
+
+      function getTimePeriodName(startTime) {
+        const date = new Date(startTime);
+        const hour = date.getHours();
+        if (hour >= 0 && hour < 6) return "Midnight";
+        if (hour >= 6 && hour < 11) return "Morning";
+        if (hour >= 11 && hour < 14) return "Noon";
+        if (hour >= 14 && hour < 18) return "Afternoon";
+        if (hour >= 18 && hour < 22) return "Evening";
+        return "Night";
+      }
+
+      function renderWeather(data) {
+        const forecasts = data.forecasts;
+        const current = forecasts[0];
+
+        // 1. 更新頂部資訊
+        if (data.city)
+          document.getElementById("locationTag").innerText = data.city;
+        const now = new Date();
+        document.getElementById("dateStamp").innerText = `${
+          now.getMonth() + 1
+        }/${now.getDate()}`;
+
+        // 2. 渲染主便條 (Hero Note)
+        const avgTemp = Math.round(
+          (parseInt(current.maxTemp) + parseInt(current.minTemp)) / 2
+        );
+        const insight = generateInsight(
+          current.weather,
+          current.rain,
+          current.maxTemp
+        );
+        const timeName = getTimePeriodName(current.startTime);
+
+        document.getElementById("heroContainer").innerHTML = `
+            <div class="paper-note hero-note">
+                <div class="tape"></div>
+                <div class="note-title">Now / ${timeName}</div>
+                
+                <div class="main-weather-row">
+                    <div class="main-icon">${getWeatherIcon(
+                      current.weather
+                    )}</div>
+                    <div class="main-temp">${avgTemp}°</div>
+                </div>
+
+                <div class="note-insight">
+                    ${insight}
+                </div>
+                <div style="margin-top:10px; font-size:0.9rem; color:var(--ink-secondary)">
+                    濕度: ${current.rain}% / ${current.comfort}
+                </div>
+            </div>
+        `;
+
+        // 3. 渲染小便條牆 (Forecast Deck)
+        const deck = document.getElementById("forecastDeck");
+        deck.innerHTML = "";
+
+        // 跳過第一個(現在)，顯示後面5個
+        forecasts.slice(1, 6).forEach((f, index) => {
+          let timeLabel = getTimePeriodName(f.startTime);
+          const fDate = new Date(f.startTime);
+          const today = new Date().getDate();
+
+          if (fDate.getDate() !== today) timeLabel = "Tomorrow";
+
+          const rainProb = parseInt(f.rain) || 0;
+          const bgStyle = `background-color: ${getRandomColor(index + 1)}`; // +1 避免跟主色重複
+
+          deck.innerHTML += `
+            <div class="paper-note mini-note" style="${bgStyle}">
+                <div class="tape"></div>
+                <div class="mini-time">${timeLabel}</div>
+                <div class="mini-icon">${getWeatherIcon(f.weather)}</div>
+                <div class="mini-temp">${f.minTemp}°-${f.maxTemp}°</div>
+                
+                <div style="font-size:0.8rem; margin-top:5px; color:var(--ink-secondary)">Rain ${rainProb}%</div>
+                <div class="sketch-bar-box">
+                    <div class="sketch-bar-fill" style="width: ${rainProb}%"></div>
+                </div>
+            </div>
+          `;
+        });
+      }
+
+      async function fetchWeather() {
+        try {
+          const delayPromise = new Promise((resolve) =>
+            setTimeout(resolve, 1000)
+          );
+          const fetchPromise = fetch(API_URL).then((res) => res.json());
+
+          const [_, json] = await Promise.all([delayPromise, fetchPromise]);
+
+          if (json.success) {
+            renderWeather(json.data);
+            const loading = document.getElementById("loading");
+            loading.style.opacity = 0;
+            setTimeout(() => {
+              loading.style.display = "none";
+              document.getElementById("mainContent").style.display = "block";
+            }, 500);
+          }
+        } catch (e) {
+          console.error(e);
+          document.getElementById(
+            "heroContainer"
+          ).innerHTML = `<div class="paper-note">無法讀取便條...</div>`;
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("mainContent").style.display = "block";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", fetchWeather);
+    </script>
+  </body>
+</html>
